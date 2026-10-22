@@ -23,8 +23,19 @@ Clone the repository and run the linker script. This creates symlinks into `~/.a
 ```bash
 git clone https://github.com/hyeganeh-m/agent-skills.git
 cd agent-skills
+
+# All skills
 ./scripts/link-skills.sh
+
+# One skill, or every skill in a category
+./scripts/link-skills.sh ping-docs
+./scripts/link-skills.sh ping-identity
+
+# Preview only
+./scripts/link-skills.sh --dry-run
 ```
+
+It accepts the same `--force` and `--dry-run` options as the workspace script below. An existing real folder with the same skill name is skipped, not deleted, unless you pass `--force`.
 
 ### Option 2: Symlink Into a Specific Workspace
 

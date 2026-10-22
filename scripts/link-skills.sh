@@ -1,57 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Links all active skills in the repository into the standard skill directories:
-#   - ~/.agents/skills (Codex, Antigravity, and Agent Skills harnesses)
+# Links skills from this repository into the global skill directories:
+#   - ~/.agents/skills (Antigravity, Codex, and Agent Skills harnesses)
 #   - ~/.claude/skills (Claude Code)
 #
 # Each entry is a symlink into this repository, so a `git pull` keeps installed
 # skills up to date.
+#
+# This is a thin wrapper around link-skills-workspace.sh with the workspace set
+# to $HOME and --claude enabled, so both scripts share the same selection and
+# safety logic.
 
-REPO="$(cd "$(dirname "$0")/.." && pwd)"
-DESTS=("$HOME/.agents/skills" "$HOME/.claude/skills")
+usage() {
+  cat <<'EOF'
+Usage: link-skills.sh [options] [skill-or-category ...]
 
-# Collect skills from skills/
-names=()
-srcs=()
-while IFS= read -r -d '' skill_md; do
-  src="$(dirname "$skill_md")"
-  names+=("$(basename "$src")")
-  srcs+=("$src")
-done < <(find "$REPO/skills" -name SKILL.md -not -path '*/node_modules/*' -print0)
+Links skills from this repository into ~/.agents/skills and ~/.claude/skills.
 
-if [ ${#names[@]} -eq 0 ]; then
-  echo "No active skills found to link."
-  exit 0
-fi
+Arguments:
+  skill-or-category    Optional, repeatable. Either a skill name (e.g. ping-docs)
+                       or a category folder under skills/ (e.g. ping-identity),
+                       which links every skill inside it.
+                       If omitted, all skills are linked.
 
-for DEST in "${DESTS[@]}"; do
-  # Avoid circular linking if DEST is already a symlink pointing into this repo
-  if [ -L "$DEST" ]; then
-    resolved="$(readlink -f "$DEST" 2>/dev/null || readlink "$DEST")"
-    case "$resolved" in
-      "$REPO"|"$REPO"/*)
-        echo "Warning: $DEST is a symlink into this repo ($resolved). Skipping." >&2
-        continue
-        ;;
-    esac
-  fi
+Options:
+  --force      Replace an existing real folder that has the same skill name.
+               Without this flag, such folders are left untouched and skipped.
+  --dry-run    Show what would happen without changing anything.
+  -h, --help   Show this help.
 
-  mkdir -p "$DEST"
+Examples:
+  link-skills.sh
+  link-skills.sh ping-docs
+  link-skills.sh ping-identity
+  link-skills.sh --dry-run ping-identity
+EOF
+}
 
-  for i in "${!names[@]}"; do
-    name="${names[$i]}"
-    src="${srcs[$i]}"
-    target="$DEST/$name"
-
-    if [ -e "$target" ] && [ ! -L "$target" ]; then
-      echo "Note: Replacing non-symlink existing file/directory at $target"
-      rm -rf "$target"
-    fi
-
-    ln -sfn "$src" "$target"
-    echo "Linked: $name -> $src ($DEST)"
-  done
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help) usage; exit 0 ;;
+    --) break ;;
+  esac
 done
 
-echo "Skills linking complete."
+exec "$(cd "$(dirname "$0")" && pwd -P)/link-skills-workspace.sh" --claude "$HOME" "$@"

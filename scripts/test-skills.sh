@@ -145,6 +145,27 @@ check "replaces an existing real folder with --force" \
   bash -c '"$0" --force "$1/c" ping-docs && [ -L "$1/c/.agents/skills/ping-docs" ]' "$LINK_WS" "$TMP_WS"
 
 echo ""
+echo "=== 7. Functional Testing (link-skills.sh, using a temporary HOME) ==="
+LINK_GLOBAL="$REPO/scripts/link-skills.sh"
+FAKE_HOME="$TMP_WS/home"
+mkdir -p "$FAKE_HOME"
+
+check "dry-run creates nothing" \
+  bash -c 'HOME="$1" "$0" --dry-run && [ ! -e "$1/.agents" ] && [ ! -e "$1/.claude" ]' "$LINK_GLOBAL" "$FAKE_HOME"
+check "links all skills into ~/.agents/skills and ~/.claude/skills" \
+  bash -c 'HOME="$1" "$0" && [ -L "$1/.agents/skills/ping-docs" ] && [ -L "$1/.claude/skills/ping-docs" ]' "$LINK_GLOBAL" "$FAKE_HOME"
+check "accepts a category name" \
+  bash -c 'HOME="$1" "$0" ping-identity' "$LINK_GLOBAL" "$FAKE_HOME"
+check "accepts a skill name" \
+  bash -c 'HOME="$1" "$0" ping-docs' "$LINK_GLOBAL" "$FAKE_HOME"
+check "rejects an unknown selector" \
+  bash -c '! HOME="$1" "$0" not-a-real-skill' "$LINK_GLOBAL" "$FAKE_HOME"
+check "keeps an existing real folder without --force" \
+  bash -c 'H="$1/h2"; mkdir -p "$H/.agents/skills/ping-docs" && HOME="$H" "$0" ping-docs && [ ! -L "$H/.agents/skills/ping-docs" ]' "$LINK_GLOBAL" "$TMP_WS"
+check "replaces an existing real folder with --force" \
+  bash -c 'H="$1/h2"; HOME="$H" "$0" --force ping-docs && [ -L "$H/.agents/skills/ping-docs" ]' "$LINK_GLOBAL" "$TMP_WS"
+
+echo ""
 if [ "$ERRORS" -eq 0 ]; then
   echo "ALL VERIFICATION CHECKS PASSED SUCCESSFULLY."
   exit 0
