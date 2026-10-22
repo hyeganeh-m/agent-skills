@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Caches & temporary files
+.cache/
+.DS_Store
+Thumbs.db
+
+# Agent harness logs & artifacts
+*.log
+.system_generated/
