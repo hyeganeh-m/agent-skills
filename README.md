@@ -26,7 +26,33 @@ cd agent-skills
 ./scripts/link-skills.sh
 ```
 
-### Option 2: Copy Into Specific Agent Directory
+### Option 2: Symlink Into a Specific Workspace
+
+Use `link-skills-workspace.sh` to link skills into one project folder (`<workspace>/.agents/skills`) instead of your home directory. You can choose which skills to link by skill name or by category. With no selection, every skill is linked.
+
+```bash
+# All skills
+./scripts/link-skills-workspace.sh ~/projects/my-app
+
+# One skill
+./scripts/link-skills-workspace.sh ~/projects/my-app ping-docs
+
+# Every skill in a category
+./scripts/link-skills-workspace.sh ~/projects/my-app ping-identity
+
+# Preview only, and also link into <workspace>/.claude/skills
+./scripts/link-skills-workspace.sh --dry-run --claude ~/projects/my-app ping-identity
+```
+
+| Option | Effect |
+| :--- | :--- |
+| `--claude` | Also link into `<workspace>/.claude/skills` (Claude Code). |
+| `--force` | Replace an existing real folder with the same skill name. Without it, such folders are skipped and left untouched. |
+| `--dry-run` | Show what would happen without changing anything. |
+
+> If the workspace is a git repository, the symlinks contain absolute paths from your machine. Add them to that repository's `.gitignore` if you don't want to commit them.
+
+### Option 3: Copy Into Specific Agent Directory
 
 If you prefer static files without symlinks, copy the desired skill folder directly into your harness:
 

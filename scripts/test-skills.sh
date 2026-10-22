@@ -111,6 +111,40 @@ else
 fi
 
 echo ""
+echo "=== 6. Functional Testing (link-skills-workspace.sh) ==="
+LINK_WS="$REPO/scripts/link-skills-workspace.sh"
+TMP_WS="$(mktemp -d)"
+trap 'rm -rf "$TMP_WS"' EXIT
+
+check() {
+  # check <description> <command...>
+  local desc="$1"; shift
+  if "$@" > /dev/null 2>&1; then
+    echo "  OK: $desc"
+  else
+    echo "  FAIL: $desc"
+    ERRORS=$((ERRORS + 1))
+  fi
+}
+
+check "dry-run creates nothing" \
+  bash -c '"$0" --dry-run "$1" && [ ! -e "$1/.agents" ]' "$LINK_WS" "$TMP_WS"
+check "links all skills when no selector is given" \
+  bash -c '"$0" "$1" && [ -L "$1/.agents/skills/ping-docs" ]' "$LINK_WS" "$TMP_WS"
+check "accepts a category name" \
+  "$LINK_WS" "$TMP_WS" ping-identity
+check "accepts a skill name and --claude" \
+  bash -c '"$0" --claude "$1" ping-docs && [ -L "$1/.claude/skills/ping-docs" ]' "$LINK_WS" "$TMP_WS"
+check "rejects an unknown selector" \
+  bash -c '! "$0" "$1" not-a-real-skill' "$LINK_WS" "$TMP_WS"
+check "rejects the skills repo itself as workspace" \
+  bash -c '! "$0" "$1"' "$LINK_WS" "$REPO"
+check "keeps an existing real folder without --force" \
+  bash -c 'mkdir -p "$1/c/.agents/skills/ping-docs" && "$0" "$1/c" ping-docs && [ ! -L "$1/c/.agents/skills/ping-docs" ]' "$LINK_WS" "$TMP_WS"
+check "replaces an existing real folder with --force" \
+  bash -c '"$0" --force "$1/c" ping-docs && [ -L "$1/c/.agents/skills/ping-docs" ]' "$LINK_WS" "$TMP_WS"
+
+echo ""
 if [ "$ERRORS" -eq 0 ]; then
   echo "ALL VERIFICATION CHECKS PASSED SUCCESSFULLY."
   exit 0
