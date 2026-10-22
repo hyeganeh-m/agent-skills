@@ -7,17 +7,19 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: list-workspace-skills.sh [options] [workspace-dir]
+Usage: list-workspace-skills.sh [options] [workspace-dir] [harness]
 
 Lists all skills available in <workspace-dir> (default: current directory)
 alongside global and built-in skills for supported agentic harnesses.
 
 Arguments:
   workspace-dir            Target project workspace (defaults to ".").
+  harness                  Optional harness name: antigravity (or agy), claude,
+                           gemini, codex, copilot, cursor, or all (default: all).
+                           Can be passed as a positional argument or via --harness.
 
 Options:
-  -a, --harness <name>     Filter by harness: antigravity (or agy), claude,
-                           gemini, codex, copilot, cursor, or all (default: all).
+  -a, --harness <name>     Filter by harness (same as positional harness argument).
   --workspace-only         Only show workspace-scoped skills.
   --global-only            Only show global (and built-in) skills.
   --no-builtin             Exclude harness built-in/system skills.
@@ -28,18 +30,30 @@ Options:
 Examples:
   list-workspace-skills.sh
   list-workspace-skills.sh ~/projects/my-app
-  list-workspace-skills.sh --harness antigravity ~/projects/my-app
-  list-workspace-skills.sh --harness claude --no-builtin ~/projects/my-app
-  list-workspace-skills.sh --details ~/projects/my-app
+  list-workspace-skills.sh ~/projects/my-app antigravity
+  list-workspace-skills.sh claude
+  list-workspace-skills.sh --harness gemini ~/projects/my-app
+  list-workspace-skills.sh --no-builtin --details ~/projects/my-app
 EOF
 }
 
-HARNESS="all"
+HARNESS=""
 SCOPE_FILTER="all"
 INCLUDE_BUILTIN=1
 SHOW_DETAILS=0
 OUTPUT_JSON=0
 POSITIONAL=()
+
+is_known_harness() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    agy|antigravity|claude|claude-code|gemini|gemini-cli|codex|openai-codex|copilot|github-copilot|cursor|all)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -90,13 +104,39 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ ${#POSITIONAL[@]} -gt 1 ]; then
+if [ ${#POSITIONAL[@]} -gt 2 ]; then
   echo "error: too many positional arguments" >&2
   usage >&2
   exit 2
 fi
 
-WS_INPUT="${POSITIONAL[0]:-.}"
+WS_INPUT="."
+if [ ${#POSITIONAL[@]} -eq 1 ]; then
+  arg0="${POSITIONAL[0]}"
+  if [ -z "$HARNESS" ] && is_known_harness "$arg0" && [ ! -d "$arg0" ]; then
+    HARNESS="$arg0"
+  else
+    WS_INPUT="$arg0"
+  fi
+elif [ ${#POSITIONAL[@]} -eq 2 ]; then
+  arg0="${POSITIONAL[0]}"
+  arg1="${POSITIONAL[1]}"
+  if [ -z "$HARNESS" ] && is_known_harness "$arg0" && [ ! -d "$arg0" ]; then
+    HARNESS="$arg0"
+    WS_INPUT="$arg1"
+  else
+    WS_INPUT="$arg0"
+    if [ -z "$HARNESS" ]; then
+      HARNESS="$arg1"
+    else
+      echo "error: harness specified both via --harness and positional argument" >&2
+      exit 2
+    fi
+  fi
+fi
+
+HARNESS="${HARNESS:-all}"
+
 if [ ! -d "$WS_INPUT" ]; then
   echo "error: workspace directory does not exist: $WS_INPUT" >&2
   exit 1
@@ -346,6 +386,7 @@ def discover_for_harness(h_key: str) -> List[Dict]:
                     "name": name,
                     "scope": scope,
                     "location": format_path(skill_dir),
+                    "real_location": format_path(resolved_dir) if resolved_dir else format_path(skill_dir),
                     "is_symlink": is_symlink,
                     "symlink_target": format_path(resolved_dir) if resolved_dir else None,
                     "status": f"shadowed by {overridden_by}" if overridden_by else "active",
@@ -362,6 +403,7 @@ harness_keys = (
 
 report = {
     "workspace": str(ws_path),
+    "selected_harness": selected_harness,
     "harnesses": {},
 }
 
@@ -383,9 +425,10 @@ if output_json:
     sys.exit(0)
 
 print(f"Workspace: {ws_path}")
-print("=" * 88)
+print(f"Harness:   {HARNESS_SPECS[selected_harness]['label'] if selected_harness != 'all' else 'All Harnesses'}")
+print("=" * 96)
 
-# Summary table across selected harnesses
+# 1. Summary table across selected harnesses
 print(
     f"\n{'Harness':<18} | {'Workspace':>10} | {'Global':>10} | {'Built-in':>10} | {'Total':>8}"
 )
@@ -397,31 +440,93 @@ for hk in harness_keys:
         f"{h_data['label']:<18} | {c['workspace']:>10} | {c['global']:>10} | {c['builtin']:>10} | {c['total']:>8}"
     )
 
-# Detailed per-harness breakdown
-for hk in harness_keys:
+# 2. Skills listed by name per harness (or unified when viewing all harnesses)
+if len(harness_keys) == 1:
+    hk = harness_keys[0]
     h_data = report["harnesses"][hk]
-    c = h_data["counts"]
     items = h_data["skills"]
-    print(
-        f"\n### {h_data['label']} "
-        f"(workspace: {c['workspace']}, global: {c['global']}, built-in: {c['builtin']}, total: {c['total']})"
-    )
-    if not items:
-        print("  (no skills found)")
-        continue
+    for scope_key, scope_title in [
+        ("workspace", "Workspace Skills"),
+        ("global", "Global Skills"),
+        ("builtin", "Built-in Skills"),
+    ]:
+        if scope_key == "builtin" and not include_builtin:
+            continue
+        if scope_filter == "workspace" and scope_key != "workspace":
+            continue
+        if scope_filter == "global" and scope_key == "workspace":
+            continue
 
-    print(f"  {'Skill':<38} | {'Scope':<10} | {'Status':<22} | Location")
-    print("  " + "-" * 105)
-    for item in items:
-        loc = item["location"]
-        if item["is_symlink"] and item["symlink_target"] and item["symlink_target"] != loc:
-            loc = f"{loc} -> {item['symlink_target']}"
-        print(
-            f"  {item['name']:<38} | {item['scope']:<10} | {item['status']:<22} | {loc}"
-        )
-        if show_details and item["description"]:
-            desc = item["description"]
-            if len(desc) > 96:
-                desc = desc[:93] + "..."
-            print(f"      desc: {desc}")
+        scoped_items = [x for x in items if x["scope"] == scope_key]
+        print(f"\n### {scope_title} ({len(scoped_items)})")
+        if not scoped_items:
+            print("  (none)")
+            continue
+        print(f"  {'Skill Name':<38} | {'Status':<22} | Location")
+        print("  " + "-" * 98)
+        for item in scoped_items:
+            loc = item["location"]
+            if item["is_symlink"] and item["symlink_target"] and item["symlink_target"] != loc:
+                loc = f"{loc} -> {item['symlink_target']}"
+            print(f"  {item['name']:<38} | {item['status']:<22} | {loc}")
+            if show_details and item["description"]:
+                desc = item["description"]
+                if len(desc) > 90:
+                    desc = desc[:87] + "..."
+                print(f"      desc: {desc}")
+else:
+    # Group skills by scope across all harnesses so every skill name is listed cleanly
+    for scope_key, scope_title in [
+        ("workspace", "Workspace Skills (Project-Specific)"),
+        ("global", "Global Skills (Shared / User-Level)"),
+        ("builtin", "Built-in Skills (Harness System Defaults)"),
+    ]:
+        if scope_key == "builtin" and not include_builtin:
+            continue
+        if scope_filter == "workspace" and scope_key != "workspace":
+            continue
+        if scope_filter == "global" and scope_key == "workspace":
+            continue
+
+        # Aggregate unique (name, real_location) entries across harnesses
+        grouped: Dict[Tuple[str, str], Dict] = {}
+        for hk in harness_keys:
+            h_label = report["harnesses"][hk]["label"]
+            for item in report["harnesses"][hk]["skills"]:
+                if item["scope"] != scope_key:
+                    continue
+                key = (item["name"], item["real_location"])
+                if key not in grouped:
+                    grouped[key] = {
+                        "name": item["name"],
+                        "real_location": item["real_location"],
+                        "harnesses": [h_label],
+                        "status": item["status"],
+                        "description": item["description"],
+                    }
+                else:
+                    if h_label not in grouped[key]["harnesses"]:
+                        grouped[key]["harnesses"].append(h_label)
+
+        entries = sorted(grouped.values(), key=lambda x: (x["name"], x["real_location"]))
+        print(f"\n### {scope_title} ({len(entries)})")
+        if not entries:
+            print("  (none)")
+            continue
+        print(f"  {'Skill Name':<38} | {'Available In':<42} | Source Location")
+        print("  " + "-" * 115)
+        for entry in entries:
+            if len(entry["harnesses"]) == len(harness_keys):
+                harnesses_str = "All (6 harnesses)"
+            else:
+                harnesses_str = ", ".join(entry["harnesses"])
+            loc_str = entry["real_location"]
+            if entry["status"] != "active":
+                loc_str = f"{loc_str} ({entry['status']})"
+            print(f"  {entry['name']:<38} | {harnesses_str:<42} | {loc_str}")
+            if show_details and entry["description"]:
+                desc = entry["description"]
+                if len(desc) > 96:
+                    desc = desc[:93] + "..."
+                print(f"      desc: {desc}")
 PYEOF

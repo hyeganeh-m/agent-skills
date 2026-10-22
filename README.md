@@ -85,11 +85,13 @@ Use `./scripts/list-workspace-skills.sh` to inspect all skills available in a pr
 # Inspect current directory across all harnesses
 ./scripts/list-workspace-skills.sh
 
-# Inspect a specific project workspace
+# Inspect a specific project workspace across all harnesses
 ./scripts/list-workspace-skills.sh ~/projects/my-app
 
-# Filter to a single harness (antigravity, claude, gemini, codex, copilot, cursor)
-./scripts/list-workspace-skills.sh --harness antigravity ~/projects/my-app
+# Inspect a single harness (positional or via --harness: antigravity, claude, gemini, codex, copilot, cursor)
+./scripts/list-workspace-skills.sh ~/projects/my-app antigravity
+./scripts/list-workspace-skills.sh claude
+./scripts/list-workspace-skills.sh --harness gemini ~/projects/my-app
 
 # Exclude built-in harness skills and include skill descriptions
 ./scripts/list-workspace-skills.sh --no-builtin --details ~/projects/my-app

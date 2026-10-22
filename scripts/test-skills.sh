@@ -175,6 +175,10 @@ check "lists workspace and global skills across all harnesses" \
   bash -c 'HOME="$1" "$0" "$2" | grep -q "ping-docs"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
 check "filters by specific harness (--harness antigravity)" \
   bash -c 'HOME="$1" "$0" --harness antigravity "$2" | grep -q "Antigravity"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
+check "accepts harness as positional argument (<workspace> <harness>)" \
+  bash -c 'HOME="$1" "$0" "$2" claude | grep -q "Harness:   Claude Code"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
+check "accepts harness as single positional argument (<harness>)" \
+  bash -c 'cd "$2" && HOME="$1" "$0" gemini | grep -q "Harness:   Gemini CLI"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
 check "detects workspace shadowing of global skill with same name" \
   bash -c 'HOME="$1" "$0" --harness claude "$2" | grep -q "shadowed by workspace"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
 check "outputs valid JSON with --json" \
