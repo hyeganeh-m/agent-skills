@@ -77,6 +77,29 @@ cp -r skills/ping-identity/ping-docs ~/.claude/skills/
 
 ---
 
+## Inspecting Workspace & Global Skills
+
+Use `./scripts/list-workspace-skills.sh` to inspect all skills available in a project workspace across supported agentic harnesses (**Antigravity**, **Claude Code**, **Gemini CLI**, **OpenAI Codex**, **GitHub Copilot**, and **Cursor**), combining workspace skills with global and built-in skills:
+
+```bash
+# Inspect current directory across all harnesses
+./scripts/list-workspace-skills.sh
+
+# Inspect a specific project workspace
+./scripts/list-workspace-skills.sh ~/projects/my-app
+
+# Filter to a single harness (antigravity, claude, gemini, codex, copilot, cursor)
+./scripts/list-workspace-skills.sh --harness antigravity ~/projects/my-app
+
+# Exclude built-in harness skills and include skill descriptions
+./scripts/list-workspace-skills.sh --no-builtin --details ~/projects/my-app
+
+# Export as JSON
+./scripts/list-workspace-skills.sh --json ~/projects/my-app
+```
+
+---
+
 ## Verification & Testing
 
 This repository includes an automated testing and sanitization gate:

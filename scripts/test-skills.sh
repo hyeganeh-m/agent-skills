@@ -166,6 +166,23 @@ check "replaces an existing real folder with --force" \
   bash -c 'H="$1/h2"; HOME="$H" "$0" --force ping-docs && [ -L "$H/.agents/skills/ping-docs" ]' "$LINK_GLOBAL" "$TMP_WS"
 
 echo ""
+echo "=== 8. Functional Testing (list-workspace-skills.sh) ==="
+LIST_WS="$REPO/scripts/list-workspace-skills.sh"
+
+check "displays help message" \
+  "$LIST_WS" --help
+check "lists workspace and global skills across all harnesses" \
+  bash -c 'HOME="$1" "$0" "$2" | grep -q "ping-docs"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
+check "filters by specific harness (--harness antigravity)" \
+  bash -c 'HOME="$1" "$0" --harness antigravity "$2" | grep -q "Antigravity"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
+check "detects workspace shadowing of global skill with same name" \
+  bash -c 'HOME="$1" "$0" --harness claude "$2" | grep -q "shadowed by workspace"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
+check "outputs valid JSON with --json" \
+  bash -c 'HOME="$1" "$0" --json "$2" | python3 -c "import json, sys; data = json.load(sys.stdin); assert \"harnesses\" in data"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
+check "rejects unknown harness name" \
+  bash -c '! HOME="$1" "$0" --harness unknown-harness "$2"' "$LIST_WS" "$FAKE_HOME" "$TMP_WS"
+
+echo ""
 if [ "$ERRORS" -eq 0 ]; then
   echo "ALL VERIFICATION CHECKS PASSED SUCCESSFULLY."
   exit 0
