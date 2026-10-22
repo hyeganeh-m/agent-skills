@@ -72,9 +72,3 @@ To add a new skill to this repository:
 4. Place any companion scripts inside `skills/<bucket>/<skill-name>/scripts/`. Ensure all scripts are self-contained and use dynamic path resolutions.
 5. Add a human documentation page in `docs/<bucket>/<skill-name>.md`.
 6. Run `./scripts/test-skills.sh` to ensure all checks pass.
-
----
-
-## License
-
-[MIT](./LICENSE) © 2026 Hossein Yeganeh

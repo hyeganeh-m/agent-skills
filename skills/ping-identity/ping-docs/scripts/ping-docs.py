@@ -6,9 +6,10 @@ Queries official Ping Identity machine-readable documentation indexes (llms.txt)
 and fetches clean Markdown endpoints directly from docs.pingidentity.com.
 
 Usage:
+  python3 ping-docs.py search pingam "consent"
   python3 ping-docs.py search pingam "consent" --version 7.5
   python3 ping-docs.py search nodes "DataStoreDecisionNode"
-  python3 ping-docs.py search all "token endpoint" --version 7.5
+  python3 ping-docs.py search all "token endpoint"
   python3 ping-docs.py get <url> [--toc] [--grep <regex>]
   python3 ping-docs.py list-products
   python3 ping-docs.py list-versions pingam
@@ -198,8 +199,43 @@ def extract_search_terms(query: str) -> List[str]:
     return [t for t in tokens if t]
 
 
+def get_target_sections(
+    sections: Dict[str, List[Dict[str, str]]], version: Optional[str] = "latest"
+) -> Dict[str, List[Dict[str, str]]]:
+    if not sections:
+        return {}
+
+    ver_clean = (version or "latest").strip().lower()
+
+    if ver_clean == "all":
+        return sections
+
+    if ver_clean in ["latest", "default"]:
+        # Find the first versioned section with entries (e.g. Pingam 8.1, Pingds 8.1)
+        for sec_name, entries in sections.items():
+            if not entries:
+                continue
+            sec_lower = sec_name.lower()
+            if "release-notes" in sec_lower or sec_lower in ["general", "overview"]:
+                continue
+            if re.search(r"\b\d+(\.\d+)?\b", sec_name):
+                return {sec_name: entries}
+        # Fallback to the first available non-empty section
+        for sec_name, entries in sections.items():
+            if entries:
+                return {sec_name: entries}
+        return sections
+
+    # Filter by specific version string (e.g. "7.5", "8.1", "2024")
+    filtered = {}
+    for sec_name, entries in sections.items():
+        if ver_clean in sec_name.lower():
+            filtered[sec_name] = entries
+    return filtered
+
+
 def search_single_product(
-    prod: str, query_terms: List[str], raw_query: str, version: Optional[str] = None, force_refresh: bool = False
+    prod: str, query_terms: List[str], raw_query: str, version: Optional[str] = "latest", force_refresh: bool = False
 ) -> List[Tuple[int, str, str, Dict[str, str]]]:
     url = f"{DOCS_BASE}/{prod}/llms.txt"
     try:
@@ -212,15 +248,10 @@ def search_single_product(
             return []
 
     sections = parse_llms_txt(content)
+    target_sections = get_target_sections(sections, version=version)
     results = []
 
-    for sec_name, entries in sections.items():
-        if version:
-            sec_lower = sec_name.lower()
-            ver_clean = version.lower().strip()
-            if ver_clean not in sec_lower:
-                continue
-
+    for sec_name, entries in target_sections.items():
         for item in entries:
             title = item["title"]
             desc = item["desc"]
@@ -252,7 +283,7 @@ def search_single_product(
     return results
 
 
-def search_docs(product: str, query: str, version: Optional[str] = None, limit: int = 10, force_refresh: bool = False):
+def search_docs(product: str, query: str, version: Optional[str] = "latest", limit: int = 10, force_refresh: bool = False):
     prod = normalize_product(product)
     query_terms = extract_search_terms(query)
 
@@ -338,13 +369,13 @@ def main():
     p_search = subparsers.add_parser("search", help="Search product documentation index")
     p_search.add_argument("product", help="Product name or alias (e.g. am, ds, idm, nodes, all)")
     p_search.add_argument("query", help="Keyword(s) to search for")
-    p_search.add_argument("--version", "-v", help="Filter by product version (e.g. 7.5, 8.1)")
+    p_search.add_argument("--version", "-v", default="latest", help="Filter by product version (e.g. latest, 7.5, 8.1, all). Default: latest")
     p_search.add_argument("--limit", "-n", type=int, default=10, help="Maximum results to return (default: 10)")
     p_search.add_argument("--refresh", action="store_true", help="Force refresh cache")
 
     # get
     p_get = subparsers.add_parser("get", help="Fetch and display Markdown doc page")
-    p_get.add_argument("url", help="Doc URL (e.g. https://docs.pingidentity.com/pingam/7.5/path/page.md or .html)")
+    p_get.add_argument("url", help="Doc URL (e.g. https://docs.pingidentity.com/pingam/8.1/path/page.md or .html)")
     p_get.add_argument("--toc", action="store_true", help="Display only headings / table of contents")
     p_get.add_argument("--grep", help="Filter and display sections matching a regex pattern")
     p_get.add_argument("--refresh", action="store_true", help="Force refresh cache")

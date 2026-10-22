@@ -32,26 +32,29 @@ The companion CLI script (`ping-docs.py`) provides fast keyword search, version 
 python3 scripts/ping-docs.py list-products
 ```
 
-### Searching a specific product & version
+### Searching product documentation (defaults to latest version)
 ```bash
-# Search PingAM 7.5 for OAuth2 consent settings
-python3 scripts/ping-docs.py search am "consent" --version 7.5
+# Search PingAM for OAuth2 consent settings (defaults to latest)
+python3 scripts/ping-docs.py search am "consent"
 
-# Search PingDS 7.5 for setup profiles
-python3 scripts/ping-docs.py search ds "setup profile" --version 7.5
+# Search PingDS for setup profiles
+python3 scripts/ping-docs.py search ds "setup profile"
 
 # Search Authentication Nodes for DataStoreDecisionNode
-python3 scripts/ping-docs.py search nodes "DataStoreDecisionNode" --version 7.5
+python3 scripts/ping-docs.py search nodes "DataStoreDecisionNode"
+
+# Optionally filter by an older version if needed
+python3 scripts/ping-docs.py search am "consent" --version 7.5
 ```
 
 ### Inspecting headings / table of contents
 ```bash
-python3 scripts/ping-docs.py get https://docs.pingidentity.com/pingam/7.5/am-oauth2/oauth2-manage-consent.md --toc
+python3 scripts/ping-docs.py get https://docs.pingidentity.com/pingam/8.1/am-oauth2/oauth2-manage-consent.md --toc
 ```
 
 ### Grepping for exact keywords
 ```bash
-python3 scripts/ping-docs.py get https://docs.pingidentity.com/pingam/7.5/am-oauth2/oauth2-manage-consent.md --grep "implied"
+python3 scripts/ping-docs.py get https://docs.pingidentity.com/pingam/8.1/am-oauth2/oauth2-manage-consent.md --grep "implied"
 ```
 
 ---
